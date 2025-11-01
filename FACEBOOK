@@ -1,127 +1,50 @@
---CREATE DATABASE red_social;
 USE red_social;
-
---Agregación de usuarios 
+go 
+-- Tabla de usuarios
 CREATE TABLE usuarios (
-    id_usuario INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL,
-    apellido VARCHAR(50),
-    correo VARCHAR(100) UNIQUE NOT NULL,
-    contraseña VARCHAR(255) NOT NULL,
-    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
-    foto_perfil VARCHAR(255),
-    INDEX (correo)
+    id_usuario INT IDENTITY(1,1) PRIMARY KEY,
+    nombre NVARCHAR(50),
+    apellido NVARCHAR(50),
+    correo NVARCHAR(100),
+    contraseña NVARCHAR(255),
+    foto_perfil NVARCHAR(255)
 );
+GO
 
---Table de publicaciones 
+-- Tabla de publicaciones
 CREATE TABLE publicaciones (
-    id_publicacion INT AUTO_INCREMENT PRIMARY KEY,
-    id_usuario INT NOT NULL,
-    contenido TEXT NOT NULL,
-    imagen VARCHAR(255),
-    fecha_publicacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+    id_publicacion INT IDENTITY(1,1) PRIMARY KEY,
+    id_usuario INT,
+    contenido NVARCHAR(500),
+    fecha_publicacion DATETIME DEFAULT GETDATE(),
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
 );
 
-DELIMITER $$
---registrar un nuevo usuario 
-CREATE PROCEDURE registrar_usuario (
-    IN p_nombre VARCHAR(50),
-    IN p_apellido VARCHAR(50),
-    IN p_correo VARCHAR(100),
-    IN p_contraseña VARCHAR(255),
-    IN p_foto_perfil VARCHAR(255)
-)
-BEGIN
-    INSERT INTO usuarios (nombre, apellido, correo, contraseña, foto_perfil)
-    VALUES (p_nombre, p_apellido, p_correo, p_contraseña, p_foto_perfil);
-END$$
+GO
+-- Crear vista para muro (muestra usuario + publicaciones)
+CREATE VIEW vista_muro AS
+SELECT 
+    u.id_usuario,
+    u.nombre,
+    u.apellido,
+    u.foto_perfil,
+    p.id_publicacion,
+    p.contenido,
+    p.fecha_publicacion
+FROM usuarios u
+INNER JOIN publicaciones p ON u.id_usuario = p.id_usuario;
+GO
+SELECT * FROM vista_muro;
 
-DELIMITER ;
-
-CALL registrar_usuario('Carlos', 'Ramos', 'carlos@example.com', '12345', 'perfil1.jpg');
-
---inicia sessión para validar usuario 
-DELIMITER $$
-
-CREATE PROCEDURE iniciar_sesion (
-    IN p_correo VARCHAR(100),
-    IN p_contraseña VARCHAR(255)
-)
-BEGIN
-    SELECT id_usuario, nombre, apellido
-    FROM usuarios
-    WHERE correo = p_correo AND contraseña = p_contraseña;
-END$$
-
-DELIMITER ;
-
-CALL iniciar_sesion('carlos@example.com', '12345');
-
-
---creamos publicación 
-DELIMITER $$
-
-CREATE PROCEDURE iniciar_sesion (
-    IN p_correo VARCHAR(100),
-    IN p_contraseña VARCHAR(255)
-)
-BEGIN
-    SELECT id_usuario, nombre, apellido
-    FROM usuarios
-    WHERE correo = p_correo AND contraseña = p_contraseña;
-END$$
-
-DELIMITER ;
-
-CALL crear_publicacion(1, 'Hoy fue un gran día aprendiendo SQL 😎', 'foto_dia.jpg');
-
-
---ver todas las publicaciones 
-DELIMITER $$
-
-CREATE PROCEDURE ver_feed ()
-BEGIN
-    SELECT 
-        u.nombre AS usuario,
-        u.apellido,
-        p.contenido,
-        p.fecha_publicacion
-    FROM publicaciones p
-    INNER JOIN usuarios u ON p.id_usuario = u.id_usuario
-    ORDER BY p.fecha_publicacion DESC;
-END$$
-
-DELIMITER ;
-
-CALL ver_feed();
-
--- Insertar 1000 usuarios automáticamente
-DELIMITER $$
-
-CREATE PROCEDURE generar_usuarios(IN cantidad INT)
-BEGIN
-    DECLARE i INT DEFAULT 1;
-    WHILE i <= cantidad DO
-        INSERT INTO usuarios (nombre, apellido, correo, contraseña, foto_perfil)
-        VALUES (
-            CONCAT('Usuario', i),
-            CONCAT('Apellido', i),
-            CONCAT('usuario', i, '@example.com'),
-            'pass123',
-            CONCAT('perfil', i, '.jpg')
-        );
-        SET i = i + 1;
-    END WHILE;
-END$$
-
-DELIMITER ;
-
---SE Ejecuta de acuerdo a la cantidad de usuarios 
-CALL generar_usuarios(1000);
-
--- Ver cantidad total de usuarios
-SELECT COUNT(*) AS total_usuarios FROM usuarios;
-
--- Ver las últimas publicaciones con autor
-CALL ver_feed();
+GO
+-- Crear vista solo de publicaciones
+CREATE VIEW vista_publicaciones AS
+SELECT 
+    p.id_publicacion,
+    u.nombre + ' ' + u.apellido AS autor,
+    p.contenido,
+    p.fecha_publicacion
+FROM publicaciones p
+INNER JOIN usuarios u ON p.id_usuario = u.id_usuario;
+GO
+SELECT * FROM vista_publicaciones;
